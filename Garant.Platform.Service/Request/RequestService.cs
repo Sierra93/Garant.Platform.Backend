@@ -21,13 +21,17 @@ namespace Garant.Platform.Services.Request
         private readonly IFranchiseRepository _franchiseRepository;
         private readonly IBusinessRepository _businessRepository;
         private readonly PostgreDbContext _postgreDbContext;
+        private readonly IRequestRepository _requestRepository;
 
-        public RequestService(IFranchiseRepository franchiseRepository, IBusinessRepository businessRepository,
-            PostgreDbContext postgreDbContext)
+        public RequestService(IFranchiseRepository franchiseRepository, 
+            IBusinessRepository businessRepository,
+            PostgreDbContext postgreDbContext, 
+            IRequestRepository requestRepository)
         {
             _franchiseRepository = franchiseRepository;
             _businessRepository = businessRepository;
             _postgreDbContext = postgreDbContext;
+            _requestRepository = requestRepository;
         }
 
         /// <summary>
@@ -185,7 +189,7 @@ namespace Garant.Platform.Services.Request
                 throw;
             }
         }
-        
+
         /// <summary>
         /// Метод вернет заголовок и описание статуса заявки исходя из ее статуса.
         /// </summary>
@@ -202,6 +206,70 @@ namespace Garant.Platform.Services.Request
             }
 
             return await Task.FromResult(result);
+        }
+        
+        /// <summary>
+        /// Метод получит список сделок пользователя.
+        /// </summary>
+        /// <param name="account">Аккаунт.</param>
+        /// <returns>Список сделок.</returns>
+        public async Task<IEnumerable<RequestDealOutput>> GetDealsAsync(string account)
+        {
+            try
+            {
+                var dealsList = await _requestRepository.GetDealsAsync(account);
+
+                return dealsList;
+            }
+            
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                var logger = new Logger(_postgreDbContext, e.GetType().FullName, e.Message, e.StackTrace);
+                await logger.LogError();
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Метод вернет заголовок и описание статуса заявки исходя из ее статуса.
+        /// </summary>
+        /// <param name="requestStatus">Статус заявки.&</param>
+        /// <returns>Заголовок и описание статуса заявки.</returns>
+        public async Task<(string, string)> GetDealRequestInfoAsync(string requestStatus) {
+            var result = (string.Empty, string.Empty);
+            
+            // Если на рассмотрении.
+            if (requestStatus.Equals("Review"))
+            {
+                result.Item1 = "Ожидает действий";
+            }
+
+            return await Task.FromResult(result);
+        }
+
+        /// <summary>
+        /// етод проверит подтверждена ли заявка продавцом.
+        /// </summary>
+        /// <param name="requestId">Id аявки.</param>
+        /// <param name="type">Тип заявки.</param>
+        /// <returns>Статус проверки.</returns>
+        public async Task<bool> CheckConfirmRequestAsync(long requestId, string type)
+        {
+            try
+            {
+                var result = await _requestRepository.CheckConfirmRequestAsync(requestId, type);
+
+                return result;
+            }
+            
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                var logger = new Logger(_postgreDbContext, e.GetType().FullName, e.Message, e.StackTrace);
+                await logger.LogError();
+                throw;
+            }
         }
     }
 }
